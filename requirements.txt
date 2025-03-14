@@ -1,3 +1,4 @@
+fastrtc
 gtts
 google-generativeai
 gradio
