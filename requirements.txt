@@ -1,11 +1,6 @@
-gradio==5.16.0
 fastapi
-uvicorn
-requests
 pillow
-gtts
-python-dotenv
 google-generativeai
 numpy
 fastrtc
-dotenv
+pyrofork
