@@ -6,7 +6,7 @@ import numpy as np
 from io import BytesIO
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
-import google.generativeai as genai
+from google.generativeai import Client  # FIXED Import
 from gtts import gTTS
 import gradio as gr
 from gradio.utils import get_space
@@ -45,7 +45,7 @@ class GeminiHandler(AsyncAudioVideoStreamHandler):
         return GeminiHandler()
 
     async def start_up(self):
-        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"), http_options={"api_version": "v1alpha"})
+        client = Client(api_key=os.getenv("GEMINI_API_KEY"))  # FIXED Import
         config = {"response_modalities": ["AUDIO"]}
 
         async with client.aio.live.connect(model="gemini-2.0-flash-exp", config=config) as session:
@@ -57,6 +57,7 @@ class GeminiHandler(AsyncAudioVideoStreamHandler):
                         self.audio_queue.put_nowait(audio)
 
     async def receive(self, frame: tuple[int, np.ndarray]) -> None:
+        """Handle incoming audio frames"""
         _, array = frame
         array = array.squeeze()
         audio_message = {
@@ -67,8 +68,21 @@ class GeminiHandler(AsyncAudioVideoStreamHandler):
             await self.session.send(input=audio_message)
 
     async def emit(self):
+        """Send processed audio"""
         array = await self.audio_queue.get()
         return (self.output_sample_rate, array)
+
+    async def video_receive(self, frame: np.ndarray):
+        """Process incoming video frames"""
+        if self.session:
+            if time.time() - self.last_frame_time > 1:
+                self.last_frame_time = time.time()
+                await self.session.send(input={"image": base64.b64encode(frame.tobytes()).decode()})
+        self.video_queue.put_nowait(frame)
+
+    async def video_emit(self):
+        """Send processed video frames"""
+        return await self.video_queue.get()
 
     async def shutdown(self) -> None:
         if self.session:
