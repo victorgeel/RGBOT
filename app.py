@@ -1,124 +1,42 @@
 import os
+import io
 import base64
-import time
-import asyncio
-import numpy as np
-from io import BytesIO
-from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse
-from google.generativeai import Client  # FIXED Import
-from gtts import gTTS
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import JSONResponse
 import gradio as gr
+from gradio.components import WebRTC
+from gradio.blocks import Blocks
 from gradio.utils import get_space
-from fastrtc import AsyncAudioVideoStreamHandler, Stream, get_twilio_turn_credentials, WebRTC
-from dotenv import load_dotenv
-from PIL import Image
+import requests
 
-load_dotenv()
 app = FastAPI()
 
-# --------------------- TTS API for Telegram ---------------------
-@app.post("/tts")
-async def text_to_speech(request: Request):
-    data = await request.json()
-    text = data.get("text", "")
+def get_twilio_turn_credentials():
+    # Your Twilio TURN credentials logic here (if needed)
+    return None
 
-    if not text:
-        return JSONResponse({"error": "No text provided"}, status_code=400)
+class GeminiHandler:
+    def __call__(self, webrtc_data, image_data):
+        # Placeholder: Process audio/video and image data
+        # In a real implementation:
+        # - Extract audio/video frames from webrtc_data
+        # - Process the frames using your Gemini model or any other desired logic
+        # - Return the processed results (e.g., text, images, audio)
+        processed_data = f"Processed audio/video and image: {len(webrtc_data) if webrtc_data else 0} bytes, {image_data.shape if image_data is not None else 'None'}"
+        return processed_data
 
-    tts = gTTS(text, lang="en")
-    tts.save("response.mp3")
+@app.post("/process_media/")
+async def process_media(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        #Here, the file can be audio or video.
+        # process the file content with the GeminiHandler
+        handler = GeminiHandler()
+        result = handler(content,None) #image_data set to None for audio/video process.
+        return JSONResponse({"result": result})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
-    return FileResponse("response.mp3", media_type="audio/mpeg")
-
-# --------------------- WebRTC Handler for Live Chat ---------------------
-class GeminiHandler(AsyncAudioVideoStreamHandler):
-    def __init__(self) -> None:
-        super().__init__("mono", output_sample_rate=24000, output_frame_size=480, input_sample_rate=16000)
-        self.audio_queue = asyncio.Queue()
-        self.video_queue = asyncio.Queue()
-        self.quit = asyncio.Event()
-        self.session = None
-        self.last_frame_time = 0
-
-    def copy(self) -> "GeminiHandler":
-        return GeminiHandler()
-
-    async def start_up(self):
-        client = Client(api_key=os.getenv("GEMINI_API_KEY"))  # FIXED Import
-        config = {"response_modalities": ["AUDIO"]}
-
-        async with client.aio.live.connect(model="gemini-2.0-flash-exp", config=config) as session:
-            self.session = session
-            while not self.quit.is_set():
-                async for response in session.receive():
-                    if data := response.data:
-                        audio = np.frombuffer(data, dtype=np.int16).reshape(1, -1)
-                        self.audio_queue.put_nowait(audio)
-
-    async def receive(self, frame: tuple[int, np.ndarray]) -> None:
-        """Handle incoming audio frames"""
-        _, array = frame
-        array = array.squeeze()
-        audio_message = {
-            "mime_type": "audio/pcm",
-            "data": base64.b64encode(array.tobytes()).decode("UTF-8"),
-        }
-        if self.session:
-            await self.session.send(input=audio_message)
-
-    async def emit(self):
-        """Send processed audio"""
-        array = await self.audio_queue.get()
-        return (self.output_sample_rate, array)
-
-    async def video_receive(self, frame: np.ndarray):
-        """Process incoming video frames"""
-        if self.session:
-            if time.time() - self.last_frame_time > 1:
-                self.last_frame_time = time.time()
-                await self.session.send(input={"image": base64.b64encode(frame.tobytes()).decode()})
-        self.video_queue.put_nowait(frame)
-
-    async def video_emit(self):
-        """Send processed video frames"""
-        return await self.video_queue.get()
-
-    async def shutdown(self) -> None:
-        if self.session:
-            self.quit.set()
-            await self.session._websocket.close()
-            self.quit.clear()
-
-# --------------------- WebRTC & Gradio UI ---------------------
-stream = Stream(
-    handler=GeminiHandler(),
-    modality="audio-video",
-    mode="send-receive",
-    rtc_configuration=get_twilio_turn_credentials() if get_space() else None,
-    time_limit=90 if get_space() else None,
-    additional_inputs=[gr.Image(label="Image", type="numpy", sources=["upload", "clipboard"])],
-    ui_args={
-        "icon": "https://www.gstatic.com/lamda/images/gemini_favicon_f069958c85030456e93de685481c559f160ea06b.png",
-        "pulse_color": "rgb(255, 255, 255)",
-        "icon_button_color": "rgb(255, 255, 255)",
-        "title": "Gemini Audio Video Chat",
-    },
-)
-
-with gr.Blocks() as demo:
-    gr.HTML("""
-    <h1>Gemini Voice Chat</h1>
-    <p>Real-time AI-powered chat with voice & video</p>
-    """)
-    with gr.Row():
-        webrtc = WebRTC(label="Video Chat", modality="audio-video", mode="send-receive")
-        image_input = gr.Image(label="Image", type="numpy", sources=["upload", "clipboard"])
-        webrtc.stream(GeminiHandler(), inputs=[webrtc, image_input], outputs=[webrtc])
-
-stream.ui = demo
-
-# --------------------- Render Startup ---------------------
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=10000)
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
