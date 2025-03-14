@@ -1,9 +1,5 @@
-fastapi
-uvicorn
-gtts
-gradio
 google-generativeai
-fastrtc
+gradio
+uvicorn
+fastapi
 numpy
-Pillow
-python-dotenv
