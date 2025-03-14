@@ -1,13 +1,13 @@
 dotenv
 fastrtc
-gradio
+gradio>=4.0.0 #or the latest
 uvicorn
 numpy
 fastapi
-uvicorn
 numpy
 pillow
 gtts
 python-dotenv
 google-generativeai
 requests
+version
