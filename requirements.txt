@@ -1,8 +1,13 @@
 dotenv
 fastrtc
-gtts
-google-generativeai
 gradio
 uvicorn
 fastapi
 numpy
+fastapi
+uvicorn
+numpy
+pillow
+gtts
+python-dotenv
+google-generativeai
