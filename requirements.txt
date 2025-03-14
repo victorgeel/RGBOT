@@ -2,7 +2,6 @@ dotenv
 fastrtc
 gradio
 uvicorn
-fastapi
 numpy
 fastapi
 uvicorn
@@ -11,3 +10,4 @@ pillow
 gtts
 python-dotenv
 google-generativeai
+requests
