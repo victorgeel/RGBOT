@@ -6,7 +6,7 @@ import numpy as np
 from io import BytesIO
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
-from google import genai
+import google.generativeai as genai
 from gtts import gTTS
 import gradio as gr
 from gradio.utils import get_space
