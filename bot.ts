@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
 // Your API keys and bot token
-const TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"; // Replace with your bot token
-const YOUTUBE_API_KEY = "YOUR_YOUTUBE_API_KEY"; // Replace with your YouTube API key
+const TELEGRAM_BOT_TOKEN = "7857088775:AAHUSXIamPGmA1JKMGk-bD5aO56fN15N33M"; // Replace with your bot token
+const YOUTUBE_API_KEY = "AIzaSyCZXCB7vKdfLEnm8I6TfJepM3B9NBoHZD4"; // Replace with your YouTube API key
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 const YOUTUBE_API_URL = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&part=snippet&type=video&q=`;
 
